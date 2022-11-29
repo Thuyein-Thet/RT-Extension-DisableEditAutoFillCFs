@@ -5,7 +5,14 @@
 <div class="edit-custom-fields">
 % }
 
-% if(($Subject gt 0) || (index($url, "Display") gt 0) || (index($url, "Modify") gt 0)){
+% my $count=0;
+% my $refer = $Object-> RefersTo;
+% while( my $refer = $refer->Next ){
+% $count++;
+% }
+
+
+% if(($Subject gt 0) || ($count gt 0)){
 % my @cfs=RT->Config->Get('cfs');
 % my $len=scalar @cfs;
 % START:
