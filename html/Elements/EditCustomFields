@@ -1,0 +1,91 @@
+% $m->callback( CallbackName => 'BeforeCustomFields', Object => $Object,
+%               Grouping => $Grouping, ARGSRef => \%ARGS, CustomFields => $CustomFields);
+% if (@CustomFields) {
+% if ( !$InTable ) {
+<div class="edit-custom-fields">
+% }
+
+% if(($Subject gt 0) || (index($url, "Display") gt 0) || (index($url, "Modify") gt 0)){
+% my @cfs=RT->Config->Get('cfs');
+% my $len=scalar @cfs;
+% START:
+% my $i=0;
+% for my $CustomField ( @CustomFields ) {
+% for(my $j=0;$j<=$len;$j++) {
+%   if($CustomField->Name eq $cfs[$j]){
+%     splice(@CustomFields, $i, 1);
+%     goto START;
+%   }}
+% $i++;
+% }
+% }
+
+% for my $CustomField ( @CustomFields ) {
+% my $Type = $CustomField->Type || 'Unknown';
+
+  <div class="form-row edit-custom-field cftype-<% $Type %>">
+    <div class="label col-<% $LabelCols %>">
+      <% $CustomField->Name %>:
+% if ( $CustomField->EntryHint ) {
+      <span class="far fa-question-circle icon-helper" data-toggle="tooltip" data-placement="top" data-original-title="<% $CustomField->EntryHint %>"></span>
+% }
+    </div>
+    <div class="value col-<% $ValueCols %>">
+% my $default = $m->notes('Field-' . $CustomField->Id);
+% $default ||= $ARGS{"CustomField-". $CustomField->Id };
+      <& /Elements/EditCustomField,
+          %ARGS,
+          CustomField => $CustomField,
+          Default => $default,
+          Object => $Object,
+      &>
+%  if (my $msg = $m->notes('InvalidField-' . $CustomField->Id)) {
+        <br />
+        <span class="cfinvalidfield"><% $msg %></span>
+%  } elsif ($ShowHints and $CustomField->FriendlyPattern) {
+        <br>
+        <span class="cfhints">
+          <&|/l, $CustomField->FriendlyPattern &>Input must match [_1]</&>
+        </span>
+%  }
+    </div>
+% $m->callback( CallbackName => 'AfterCustomFieldValue', CustomField => $CustomField, Object => $Object, Grouping => $Grouping );
+  </div>
+% }
+
+% if ( !$InTable ) {
+</div>
+% }
+% }
+% $m->callback( CallbackName => 'AfterCustomFields', Object => $Object,
+%               Grouping => $Grouping, ARGSRef => \%ARGS );
+<%INIT>
+my $url = $r->uri;
+$CustomFields ||= $Object->CustomFields;
+$CustomFields->{include_set_initial} = 1 if $ForCreation;
+
+$CustomFields->LimitToGrouping( $Object => $Grouping ) if defined $Grouping;
+
+$m->callback( %ARGS, CallbackName => 'MassageCustomFields', CustomFields => $CustomFields,
+                  Object => $Object, ShowHintsRef => \$ShowHints, InTableRef => \$InTable );
+
+$CustomFields->GotoFirstItem;
+my @CustomFields;
+while ( my $CustomField = $CustomFields->Next ) {
+    next unless $CustomField->CurrentUserHasRight('ModifyCustomField')
+             || ($ForCreation && $CustomField->CurrentUserHasRight('SetInitialCustomField'));
+
+    push @CustomFields, $CustomField;
+}
+</%INIT>
+<%ARGS>
+$Subject=>''
+$Object
+$CustomFields => undef
+$Grouping     => undef
+$InTable => 0
+$LabelCols => 3
+$ValueCols => 9
+$ShowHints => 1
+$ForCreation => 0
+</%ARGS>
